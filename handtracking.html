@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MediaPipe Hand Detection for Max/MSP</title>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #1a1a1a;
+            color: #fff;
+        }
+        .container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        .video-container {
+            position: relative;
+            width: 640px;
+            height: 480px;
+            margin: 0 auto;
+        }
+        video, canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+        video {
+            transform: scaleX(-1);
+        }
+        canvas {
+            transform: scaleX(-1);
+        }
+        .controls {
+            background: #2a2a2a;
+            padding: 20px;
+            border-radius: 8px;
+        }
+        .control-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input[type="range"] {
+            width: 100%;
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 10px;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        button:disabled {
+            background: #666;
+            cursor: not-allowed;
+        }
+        .osc-output {
+            background: #000;
+            padding: 15px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid #444;
+        }
+        .landmark-data {
+            color: #4CAF50;
+        }
+        .info {
+            background: #2a2a2a;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+        }
+        .status.active {
+            background: #1b5e20;
+        }
+        .status.inactive {
+            background: #b71c1c;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>MediaPipe Hand Detection for Max/MSP</h1>
+        
+        <div class="status inactive" id="status">
+            Status: Not Started
+        </div>
+
+        <div class="video-container">
+            <video id="video" autoplay playsinline></video>
+            <canvas id="canvas"></canvas>
+        </div>
+
+        <div class="controls">
+            <h3>Controls</h3>
+            <button id="startBtn" onclick="startDetection()">Start Camera</button>
+            <button id="stopBtn" onclick="stopDetection()" disabled>Stop Camera</button>
+            <button onclick="copyOSCData()">Copy OSC Template</button>
+            
+            <div class="control-group">
+                <label>Max Hands: <span id="maxHandsValue">2</span></label>
+                <input type="range" id="maxHands" min="1" max="4" value="2" oninput="updateMaxHands(this.value)">
+            </div>
+            
+            <div class="control-group">
+                <label>Min Detection Confidence: <span id="detectionConfValue">0.5</span></label>
+                <input type="range" id="detectionConf" min="0" max="1" step="0.1" value="0.5" oninput="updateDetectionConf(this.value)">
+            </div>
+            
+            <div class="control-group">
+                <label>Min Tracking Confidence: <span id="trackingConfValue">0.5</span></label>
+                <input type="range" id="trackingConf" min="0" max="1" step="0.1" value="0.5" oninput="updateTrackingConf(this.value)">
+            </div>
+        </div>
+
+        <div class="controls">
+            <h3>OSC/UDP Output (for Max/MSP)</h3>
+            <div class="osc-output" id="oscOutput">
+                Waiting for hand detection...
+            </div>
+        </div>
+
+        <div class="info">
+            <h3>Max/MSP Integration Instructions</h3>
+            <p><strong>Method 1: Using Node for Max</strong></p>
+            <ol>
+                <li>Install Node for Max from the package manager</li>
+                <li>Use [node.script] object to run a local server</li>
+                <li>Send OSC data from this page to Max via UDP</li>
+            </ol>
+            
+            <p><strong>Method 2: WebSocket (Recommended)</strong></p>
+            <ol>
+                <li>Run this HTML file locally or on a server</li>
+                <li>In Max, use [udpreceive] or websocket objects to receive data</li>
+                <li>Parse incoming landmark data (21 landmarks per hand, each with x, y, z)</li>
+            </ol>
+            
+            <p><strong>Landmark Indices:</strong></p>
+            <ul>
+                <li>0: Wrist</li>
+                <li>1-4: Thumb (CMC, MCP, IP, Tip)</li>
+                <li>5-8: Index Finger</li>
+                <li>9-12: Middle Finger</li>
+                <li>13-16: Ring Finger</li>
+                <li>17-20: Pinky</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        let hands;
+        let camera;
+        let canvasCtx;
+        let isRunning = false;
+        let handData = [];
+        let isProcessing = false;
+        let ws = null;
+        let wsConnected = false;
+        let reconnectInterval = null;
+
+        function onResults(results) {
+            const canvas = document.getElementById('canvas');
+            const video = document.getElementById('video');
+            
+            if (!canvasCtx) {
+                canvasCtx = canvas.getContext('2d');
+            }
+            
+            if (canvas.width !== video.videoWidth || canvas.height !== video.videoHeight) {
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+            }
+
+            canvasCtx.save();
+            canvasCtx.clearRect(0, 0, canvas.width, canvas.height);
+            canvasCtx.drawImage(results.image, 0, 0, canvas.width, canvas.height);
+            
+            isProcessing = false;
+
+            if (results.multiHandLandmarks) {
+                handData = [];
+                let output = '';
+                
+                for (let i = 0; i < results.multiHandLandmarks.length; i++) {
+                    const landmarks = results.multiHandLandmarks[i];
+                    const handedness = results.multiHandedness[i].label;
+                    
+                    // Draw connections manually
+                    canvasCtx.strokeStyle = '#00FF00';
+                    canvasCtx.lineWidth = 2;
+                    const connections = [
+                        [0,1],[1,2],[2,3],[3,4], // Thumb
+                        [0,5],[5,6],[6,7],[7,8], // Index
+                        [0,9],[9,10],[10,11],[11,12], // Middle
+                        [0,13],[13,14],[14,15],[15,16], // Ring
+                        [0,17],[17,18],[18,19],[19,20], // Pinky
+                        [5,9],[9,13],[13,17] // Palm
+                    ];
+                    
+                    connections.forEach(([start, end]) => {
+                        const startPoint = landmarks[start];
+                        const endPoint = landmarks[end];
+                        canvasCtx.beginPath();
+                        canvasCtx.moveTo(startPoint.x * canvas.width, startPoint.y * canvas.height);
+                        canvasCtx.lineTo(endPoint.x * canvas.width, endPoint.y * canvas.height);
+                        canvasCtx.stroke();
+                    });
+                    
+                    // Draw landmarks manually
+                    canvasCtx.fillStyle = '#FF0000';
+                    landmarks.forEach(landmark => {
+                        canvasCtx.beginPath();
+                        canvasCtx.arc(
+                            landmark.x * canvas.width,
+                            landmark.y * canvas.height,
+                            3,
+                            0,
+                            2 * Math.PI
+                        );
+                        canvasCtx.fill();
+                    });
+                    
+                    // Format data for Max/MSP
+                    const handInfo = {
+                        hand: i,
+                        handedness: handedness,
+                        landmarks: []
+                    };
+                    
+                    output += `/hand/${i}/${handedness}\n`;
+                    
+                    landmarks.forEach((landmark, idx) => {
+                        const x = landmark.x.toFixed(4);
+                        const y = landmark.y.toFixed(4);
+                        const z = landmark.z.toFixed(4);
+                        
+                        handInfo.landmarks.push({x, y, z});
+                        output += `/landmark/${idx} ${x} ${y} ${z}\n`;
+                    });
+                    
+                    output += '\n';
+                    handData.push(handInfo);
+                }
+                
+                document.getElementById('oscOutput').innerHTML = `<div class="landmark-data">${output}</div>`;
+                
+                // Send data to Max/MSP via WebSocket
+                if (wsConnected && ws) {
+                    try {
+                        ws.send(JSON.stringify(handData));
+                    } catch (error) {
+                        console.error('Error sending to WebSocket:', error);
+                    }
+                }
+                
+            } else {
+                document.getElementById('oscOutput').textContent = 'No hands detected';
+            }
+
+            canvasCtx.restore();
+        }
+
+        function startDetection() {
+            const video = document.getElementById('video');
+            
+            // Try to connect to WebSocket server
+            connectToMax();
+            
+            hands = new Hands({
+                locateFile: (file) => {
+                    return `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`;
+                }
+            });
+
+            hands.setOptions({
+                maxNumHands: parseInt(document.getElementById('maxHands').value),
+                modelComplexity: 1,
+                minDetectionConfidence: parseFloat(document.getElementById('detectionConf').value),
+                minTrackingConfidence: parseFloat(document.getElementById('trackingConf').value)
+            });
+
+            hands.onResults(onResults);
+
+            camera = new Camera(video, {
+                onFrame: async () => {
+                    if (!isProcessing) {
+                        isProcessing = true;
+                        try {
+                            await hands.send({image: video});
+                        } catch (error) {
+                            console.error('Error processing frame:', error);
+                            isProcessing = false;
+                        }
+                    }
+                },
+                width: 640,
+                height: 480
+            });
+
+            camera.start();
+            isRunning = true;
+            
+            document.getElementById('status').textContent = 'Status: Running';
+            document.getElementById('status').className = 'status active';
+            document.getElementById('startBtn').disabled = true;
+            document.getElementById('stopBtn').disabled = false;
+        }
+
+        function stopDetection() {
+            if (camera) {
+                camera.stop();
+            }
+            isRunning = false;
+            
+            document.getElementById('status').textContent = 'Status: Stopped';
+            document.getElementById('status').className = 'status inactive';
+            document.getElementById('startBtn').disabled = false;
+            document.getElementById('stopBtn').disabled = true;
+        }
+
+        function updateMaxHands(value) {
+            document.getElementById('maxHandsValue').textContent = value;
+            if (hands) {
+                hands.setOptions({maxNumHands: parseInt(value)});
+            }
+        }
+
+        function updateDetectionConf(value) {
+            document.getElementById('detectionConfValue').textContent = value;
+            if (hands) {
+                hands.setOptions({minDetectionConfidence: parseFloat(value)});
+            }
+        }
+
+        function updateTrackingConf(value) {
+            document.getElementById('trackingConfValue').textContent = value;
+            if (hands) {
+                hands.setOptions({minTrackingConfidence: parseFloat(value)});
+            }
+        }
+
+        function copyOSCData() {
+            const oscData = document.getElementById('oscOutput').textContent;
+            navigator.clipboard.writeText(oscData).then(() => {
+                alert('OSC data copied to clipboard!');
+            });
+        }
+
+        // WebSocket setup for Max/MSP
+        function connectToMax() {
+            try {
+                ws = new WebSocket('ws://localhost:8080');
+                
+                ws.onopen = () => {
+                    console.log('Connected to Max/MSP bridge server');
+                    wsConnected = true;
+                    updateConnectionStatus(true);
+                    
+                    // Clear reconnect interval if it exists
+                    if (reconnectInterval) {
+                        clearInterval(reconnectInterval);
+                        reconnectInterval = null;
+                    }
+                };
+                
+                ws.onerror = (error) => {
+                    console.error('WebSocket error:', error);
+                    wsConnected = false;
+                    updateConnectionStatus(false);
+                };
+                
+                ws.onclose = () => {
+                    console.log('Disconnected from Max/MSP bridge server');
+                    wsConnected = false;
+                    updateConnectionStatus(false);
+                    
+                    // Try to reconnect every 3 seconds
+                    if (!reconnectInterval && isRunning) {
+                        reconnectInterval = setInterval(() => {
+                            console.log('Attempting to reconnect...');
+                            connectToMax();
+                        }, 3000);
+                    }
+                };
+            } catch (error) {
+                console.error('Failed to connect to WebSocket:', error);
+                wsConnected = false;
+                updateConnectionStatus(false);
+            }
+        }
+        
+        function updateConnectionStatus(connected) {
+            const statusEl = document.getElementById('status');
+            if (connected) {
+                statusEl.innerHTML = 'Status: Running | WebSocket: <span style="color: #4CAF50">Connected ✓</span>';
+            } else {
+                statusEl.innerHTML = 'Status: Running | WebSocket: <span style="color: #ff5252">Not Connected (Start Max patch first)</span>';
+            }
+        }
+    </script>
+</body>
+</html>
