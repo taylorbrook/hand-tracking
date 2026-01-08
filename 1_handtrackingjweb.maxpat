@@ -13,6 +13,16 @@
         "boxes": [
             {
                 "box": {
+                    "id": "obj-50",
+                    "maxclass": "message",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 879.0, 710.0, 50.0, 22.0 ]
+                }
+            },
+            {
+                "box": {
                     "disablefind": 0,
                     "id": "obj-3",
                     "maxclass": "jweb",
@@ -56,7 +66,7 @@
                     "numoutlets": 1,
                     "outlettype": [ "" ],
                     "patching_rect": [ 283.0, 600.0, 458.0, 22.0 ],
-                    "text": "0 Left 20 0.1783 0.7592 -0.1125"
+                    "text": "0 Right 20 0.6225 0.4594 -0.0397"
                 }
             },
             {
@@ -262,7 +272,7 @@
                     "numoutlets": 1,
                     "outlettype": [ "" ],
                     "patching_rect": [ 80.0, 287.0, 50.0, 22.0 ],
-                    "text": "Left"
+                    "text": "Right"
                 }
             },
             {
@@ -648,6 +658,12 @@
                     "destination": [ "obj-30", 0 ],
                     "midpoints": [ 51.5, 444.0, 29.5, 444.0 ],
                     "source": [ "obj-29", 1 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-50", 1 ],
+                    "source": [ "obj-3", 0 ]
                 }
             },
             {
