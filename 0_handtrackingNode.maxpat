@@ -52,7 +52,7 @@
                     "numinlets": 2,
                     "numoutlets": 2,
                     "outlettype": [ "", "" ],
-                    "patching_rect": [ 151.0, 207.0, 79.0, 22.0 ],
+                    "patching_rect": [ 330.0, 207.0, 79.0, 22.0 ],
                     "text": "route running"
                 }
             },
@@ -105,7 +105,7 @@
                     "numinlets": 1,
                     "numoutlets": 0,
                     "patching_rect": [ 20.0, 72.0, 700.0, 20.0 ],
-                    "text": "SETUP: 2. Click 'script start' below, then open the HTML page in browser and start camera"
+                    "text": "SETUP: 2. Click 'script npm install' once, then 'script start' below, then open handtracking.html in a browser and press Start Camera"
                 }
             },
             {
@@ -331,7 +331,7 @@
                     "numinlets": 1,
                     "numoutlets": 0,
                     "patching_rect": [ 20.0, 360.0, 500.0, 20.0 ],
-                    "text": "EXAMPLE: Extract Index Finger Tip (landmark 8) from Hand 0"
+                    "text": "EXAMPLE: Extract Index Finger Tip (landmark 8) from the Left hand"
                 }
             },
             {
@@ -341,8 +341,8 @@
                     "numinlets": 2,
                     "numoutlets": 2,
                     "outlettype": [ "", "" ],
-                    "patching_rect": [ 20.0, 390.0, 55.0, 22.0 ],
-                    "text": "route 0"
+                    "patching_rect": [ 20.0, 390.0, 65.0, 22.0 ],
+                    "text": "zl.slice 1"
                 }
             },
             {
@@ -351,19 +351,19 @@
                     "maxclass": "comment",
                     "numinlets": 1,
                     "numoutlets": 0,
-                    "patching_rect": [ 85.0, 390.0, 150.0, 20.0 ],
-                    "text": "← Filter for hand 0"
+                    "patching_rect": [ 95.0, 390.0, 150.0, 20.0 ],
+                    "text": "← Drop hand index"
                 }
             },
             {
                 "box": {
                     "id": "obj-29",
                     "maxclass": "newobj",
-                    "numinlets": 1,
-                    "numoutlets": 5,
-                    "outlettype": [ "", "int", "float", "float", "float" ],
-                    "patching_rect": [ 20.0, 420.0, 107.0, 22.0 ],
-                    "text": "unpack s 0 0. 0. 0."
+                    "numinlets": 2,
+                    "numoutlets": 2,
+                    "outlettype": [ "", "" ],
+                    "patching_rect": [ 20.0, 420.0, 65.0, 22.0 ],
+                    "text": "route Left"
                 }
             },
             {
@@ -383,7 +383,7 @@
                     "maxclass": "comment",
                     "numinlets": 1,
                     "numoutlets": 0,
-                    "patching_rect": [ 85.0, 450.0, 150.0, 20.0 ],
+                    "patching_rect": [ 95.0, 450.0, 150.0, 20.0 ],
                     "text": "← Filter for landmark 8"
                 }
             },
@@ -396,7 +396,7 @@
                     "numoutlets": 2,
                     "outlettype": [ "", "bang" ],
                     "parameter_enable": 0,
-                    "patching_rect": [ 20.0, 490.0, 50.0, 22.0 ]
+                    "patching_rect": [ 20.0, 500.0, 50.0, 22.0 ]
                 }
             },
             {
@@ -408,7 +408,7 @@
                     "numoutlets": 2,
                     "outlettype": [ "", "bang" ],
                     "parameter_enable": 0,
-                    "patching_rect": [ 50.0, 490.0, 50.0, 22.0 ]
+                    "patching_rect": [ 50.0, 500.0, 50.0, 22.0 ]
                 }
             },
             {
@@ -420,7 +420,7 @@
                     "numoutlets": 2,
                     "outlettype": [ "", "bang" ],
                     "parameter_enable": 0,
-                    "patching_rect": [ 80.0, 490.0, 50.0, 22.0 ]
+                    "patching_rect": [ 80.0, 500.0, 50.0, 22.0 ]
                 }
             },
             {
@@ -530,13 +530,54 @@
                     "numoutlets": 0,
                     "patching_rect": [ 398.0, 350.0, 544.0, 190.0 ]
                 }
+            },
+            {
+                "box": {
+                    "id": "obj-60",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 2,
+                    "outlettype": [ "", "" ],
+                    "patching_rect": [ 20.0, 207.0, 85.0, 22.0 ],
+                    "text": "route nohands"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-61",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 110.0, 207.0, 215.0, 20.0 ],
+                    "text": "← left outlet bangs when hands leave view"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-62",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 3,
+                    "outlettype": [ "float", "float", "float" ],
+                    "patching_rect": [ 20.0, 475.0, 90.0, 22.0 ],
+                    "text": "unpack 0. 0. 0."
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-63",
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 95.0, 420.0, 150.0, 20.0 ],
+                    "text": "← Filter for Left hand"
+                }
             }
         ],
         "lines": [
             {
                 "patchline": {
                     "destination": [ "obj-11", 0 ],
-                    "midpoints": [ 220.5, 231.0, 480.0, 231.0, 480.0, 126.0, 502.5, 126.0 ],
                     "source": [ "obj-10", 1 ]
                 }
             },
@@ -585,47 +626,19 @@
             },
             {
                 "patchline": {
-                    "destination": [ "obj-27", 0 ],
-                    "midpoints": [ 29.5, 270.0, 6.0, 270.0, 6.0, 387.0, 29.5, 387.0 ],
-                    "order": 0,
-                    "source": [ "obj-12", 0 ]
-                }
-            },
-            {
-                "patchline": {
                     "destination": [ "obj-29", 0 ],
-                    "midpoints": [ 29.5, 414.0, 29.5, 414.0 ],
-                    "source": [ "obj-27", 0 ]
+                    "source": [ "obj-27", 1 ]
                 }
             },
             {
                 "patchline": {
                     "destination": [ "obj-30", 0 ],
-                    "midpoints": [ 51.5, 444.0, 29.5, 444.0 ],
-                    "source": [ "obj-29", 1 ]
+                    "source": [ "obj-29", 0 ]
                 }
             },
             {
                 "patchline": {
-                    "destination": [ "obj-32", 0 ],
-                    "midpoints": [ 29.5, 474.0, 29.5, 474.0 ],
-                    "order": 2,
-                    "source": [ "obj-30", 0 ]
-                }
-            },
-            {
-                "patchline": {
-                    "destination": [ "obj-33", 0 ],
-                    "midpoints": [ 29.5, 483.0, 59.5, 483.0 ],
-                    "order": 1,
-                    "source": [ "obj-30", 0 ]
-                }
-            },
-            {
-                "patchline": {
-                    "destination": [ "obj-34", 0 ],
-                    "midpoints": [ 29.5, 483.0, 89.5, 483.0 ],
-                    "order": 0,
+                    "destination": [ "obj-62", 0 ],
                     "source": [ "obj-30", 0 ]
                 }
             },
@@ -673,24 +686,39 @@
             },
             {
                 "patchline": {
+                    "destination": [ "obj-12", 0 ],
+                    "source": [ "obj-60", 1 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-27", 0 ],
+                    "source": [ "obj-60", 1 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-32", 0 ],
+                    "source": [ "obj-62", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-33", 0 ],
+                    "source": [ "obj-62", 1 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-34", 0 ],
+                    "source": [ "obj-62", 2 ]
+                }
+            },
+            {
+                "patchline": {
                     "destination": [ "obj-8", 0 ],
                     "midpoints": [ 189.5, 153.0, 30.0, 153.0, 30.0, 165.0, 29.5, 165.0 ],
                     "source": [ "obj-7", 0 ]
-                }
-            },
-            {
-                "patchline": {
-                    "destination": [ "obj-10", 0 ],
-                    "midpoints": [ 160.5, 195.0, 160.5, 195.0 ],
-                    "source": [ "obj-8", 1 ]
-                }
-            },
-            {
-                "patchline": {
-                    "destination": [ "obj-12", 0 ],
-                    "midpoints": [ 29.5, 195.0, 29.5, 195.0 ],
-                    "order": 1,
-                    "source": [ "obj-8", 0 ]
                 }
             },
             {
@@ -699,6 +727,18 @@
                     "midpoints": [ 29.5, 234.0, 6.0, 234.0, 6.0, 693.0, 741.0, 693.0, 741.0, 597.0, 731.5, 597.0 ],
                     "order": 0,
                     "source": [ "obj-8", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-60", 0 ],
+                    "source": [ "obj-8", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-10", 0 ],
+                    "source": [ "obj-8", 1 ]
                 }
             }
         ],

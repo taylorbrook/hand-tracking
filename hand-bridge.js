@@ -1,5 +1,3 @@
-autowatch = 1;
-
 // hand-bridge.js - Run this with [node.script hand-bridge.js] in Max/MSP
 // This bridges WebSocket data from the browser to Max outlets
 
@@ -14,23 +12,33 @@ maxApi.post("Waiting for browser connection...");
 
 wss.on("connection", (ws) => {
     maxApi.post("Browser connected!");
-    
+
+    // Tracks whether hands were visible, so "nohands" is sent once per disappearance
+    let handsVisible = false;
+
     ws.on("message", (message) => {
         try {
             const handData = JSON.parse(message);
-            
-            // Send data through Max outlets
+
+            if (handData.length === 0) {
+                if (handsVisible) {
+                    handsVisible = false;
+                    maxApi.outlet("nohands");
+                }
+                return;
+            }
+            handsVisible = true;
+
+            // Output format: hand_index handedness landmark_index x y z
             handData.forEach((hand, handIdx) => {
-                // Output format: hand_index handedness landmark_index x y z
                 hand.landmarks.forEach((landmark, landmarkIdx) => {
-                    // Send as list: [hand_index, handedness, landmark_index, x, y, z]
                     maxApi.outlet([
                         handIdx,
                         hand.handedness,
                         landmarkIdx,
-                        parseFloat(landmark.x),
-                        parseFloat(landmark.y),
-                        parseFloat(landmark.z)
+                        landmark.x,
+                        landmark.y,
+                        landmark.z
                     ]);
                 });
             });
@@ -38,11 +46,14 @@ wss.on("connection", (ws) => {
             maxApi.post("Error parsing hand data:", error.message);
         }
     });
-    
+
     ws.on("close", () => {
         maxApi.post("Browser disconnected");
+        if (handsVisible) {
+            maxApi.outlet("nohands");
+        }
     });
-    
+
     ws.on("error", (error) => {
         maxApi.post("WebSocket error:", error.message);
     });
@@ -55,6 +66,8 @@ wss.on("error", (error) => {
 // Handle Max messages (optional - for controlling the bridge)
 maxApi.addHandler("stop", () => {
     maxApi.post("Stopping bridge server...");
+    // close() only stops accepting new connections, so drop the existing ones too
+    wss.clients.forEach((client) => client.terminate());
     wss.close();
 });
 
